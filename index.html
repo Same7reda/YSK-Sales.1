@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- PWA Icon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='55' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-size='40' fill='white' text-anchor='middle' dominant-baseline='middle' font-weight='bold'%3EYSK%3C/text%3E%3C/svg%3E" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>نظام مبيعات YSK Sales</title>
+    
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- iOS PWA Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="YSK Sales" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232563eb'/%3E%3Ctext x='50' y='55' font-family='-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-size='40' fill='white' text-anchor='middle' dominant-baseline='middle' font-weight='bold'%3EYSK%3C/text%3E%3C/svg%3E" />
+
+    <!-- CDNs & Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-database.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.20.0/umd/index.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <!-- Add Babel Standalone for in-browser TSX transpilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+      body {
+        font-family: 'Cairo', sans-serif;
+      }
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #a8a29e;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #78716c;
+      }
+      
+      /* Modal Animation */
+      @keyframes modal-fade-in {
+        from { opacity: 0; transform: translateY(10px) scale(0.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+      .modal-content-animate {
+        animation: modal-fade-in 0.2s ease-out forwards;
+      }
+
+      .typewriter-cursor::after {
+        content: '|';
+        color: inherit;
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink {
+        from, to {
+          color: transparent;
+        }
+        50% {
+          color: inherit;
+        }
+      }
+       @keyframes float-animation {
+        0%, 100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+      .splash-icon-animation {
+        animation: float-animation 6s ease-in-out infinite;
+      }
+      
+      /* New Progress Bar Animation */
+      @keyframes progress-bar-stripes {
+        from { background-position: 1rem 0; }
+        to { background-position: 0 0; }
+      }
+
+      /* AI Assistant Icon Animation */
+      @keyframes assistant-float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-4px); }
+      }
+      .assistant-icon-animation {
+        animation: assistant-float 3s ease-in-out infinite;
+      }
+
+      /* Guided Tour Styles */
+      .tour-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+      }
+      .tour-spotlight {
+        position: fixed;
+        border-radius: 8px;
+        box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        transition: all 0.3s ease-in-out;
+      }
+      .tour-popover {
+        transition: all 0.3s ease-in-out;
+      }
+
+
+      /* Print styles */
+      .printable-section {
+        display: none;
+      }
+      
+      @media print {
+        .no-print {
+            display: none !important;
+        }
+
+        body * {
+            visibility: hidden;
+        }
+        
+        .printable-section, .printable-section * {
+            visibility: visible;
+        }
+        
+        .printable-section {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+            border: none !important;
+            box-shadow: none !important;
+            background: white !important;
+            text-align: center;
+        }
+        
+        /* A4 Invoice / Report Styling */
+        .printable-section.format-a4 {
+            padding: 1rem;
+            font-size: 12pt;
+        }
+        
+        /* Thermal Receipt Styling */
+        @page {
+            margin: 0;
+        }
+        
+        body {
+            margin: 0;
+        }
+
+        .printable-section.format-receipt-80mm {
+            width: 80mm;
+            padding: 2mm;
+            font-size: 10pt;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .printable-section.format-receipt-58mm {
+            width: 58mm;
+            padding: 2mm;
+            font-size: 9pt;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        
+        .printable-section.format-receipt-80mm *,
+        .printable-section.format-receipt-58mm * {
+            text-align: center !important;
+            font-weight: normal;
+        }
+        
+        .printable-section.format-receipt-80mm h2,
+        .printable-section.format-receipt-58mm h2 {
+            font-size: 14pt;
+            font-weight: bold;
+        }
+        
+        .printable-section.format-receipt-80mm table,
+        .printable-section.format-receipt-58mm table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .printable-section.format-receipt-80mm th,
+        .printable-section.format-receipt-58mm th {
+            font-weight: bold;
+        }
+
+        .printable-section.format-receipt-80mm .totals-section div {
+            font-weight: bold;
+        }
+        
+        /* Barcode Label Styling */
+        @page {
+            size: A4;
+            margin: 1cm;
+        }
+
+        .barcode-sheet {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60mm, 1fr));
+            gap: 10px;
+            width: 190mm; /* A4 width minus margins */
+        }
+        
+        .barcode-label {
+            border: 1px dashed #ccc;
+            padding: 5px;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+
+        .barcode-label p {
+            margin: 0;
+            font-size: 8pt;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        .barcode-label .barcode-svg {
+            display: block;
+            margin: 2px auto;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@18.2.0/",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
+    "recharts": "https://esm.sh/recharts@2.12.7?deps=react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "idb": "https://aistudiocdn.com/idb@^8.0.3",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react,typescript" data-type="module" src="index.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('SW registered: ', registration);
+          }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
