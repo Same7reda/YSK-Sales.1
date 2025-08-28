@@ -1,10 +1,10 @@
+
 // sw.js
-const CACHE_NAME = 'ysk-sales-pwa-v2'; // Bumped version
+const CACHE_NAME = 'ysk-sales-pwa-v3'; // Bumped version
 const URLS_TO_CACHE = [
-  '/',
-  '/index.html',
+  './',
+  './index.html',
   // All CDN resources from index.html
-  'https://cdn.tailwindcss.com',
   'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-app.js',
   'https://cdnjs.cloudflare.com/ajax/libs/firebase/8.10.0/firebase-auth.js',
@@ -64,7 +64,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request)
         .catch(() => {
-          return caches.match('/index.html');
+          return caches.match('./index.html');
         })
     );
     return;
@@ -81,6 +81,10 @@ self.addEventListener('fetch', (event) => {
             cache.put(event.request, networkResponse.clone());
           }
           return networkResponse;
+        }).catch(err => {
+            console.warn(`[SW] Fetch failed for: ${event.request.url}`, err);
+            // On fetch failure, we MUST return the cached response if it exists.
+            return cachedResponse;
         });
 
         // Return the cached response immediately if available, otherwise wait for the network.
