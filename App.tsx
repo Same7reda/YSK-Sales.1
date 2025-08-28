@@ -60,7 +60,8 @@ const AppContent: React.FC = () => {
     if (activePage === page) return;
     if (hasPermission(page, 'view')) {
       setIsPageLoading(true);
-      setActivePage(page);
+      // Use a timeout to allow the loading spinner to appear before the page component starts rendering
+      setTimeout(() => setActivePage(page), 50);
     } else {
       addToast('ليس لديك صلاحية لعرض هذه الصفحة.', 'error');
     }
@@ -69,7 +70,7 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (isPageLoading) {
         // After activePage has changed, turn off the loading indicator after a short delay
-        const timer = setTimeout(() => setIsPageLoading(false), 250); 
+        const timer = setTimeout(() => setIsPageLoading(false), 300); 
         return () => clearTimeout(timer);
     }
   }, [activePage, isPageLoading]);
@@ -129,14 +130,16 @@ const AppContent: React.FC = () => {
           <Sidebar activePage={activePage} onPageChange={handlePageChange} />
           <main className="flex-1 relative">
             <Header onNavigate={handlePageChange} activePage={activePage} onToggleAssistant={handleToggleAssistant} />
-            <div className="h-[calc(100vh-80px)] overflow-y-auto">
-              {renderPage()}
-            </div>
-             {isPageLoading && (
-                <div className="absolute inset-0 top-[80px] bg-gray-50/70 backdrop-blur-sm flex items-center justify-center z-20">
-                    <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+             <div className="relative h-[calc(100vh-73px)]">
+                 <div className={`h-full overflow-y-auto transition-opacity duration-300 ${isPageLoading ? 'opacity-0' : 'opacity-100'}`}>
+                    {renderPage()}
                 </div>
-            )}
+                {isPageLoading && (
+                    <div className="absolute inset-0 bg-gray-50/70 backdrop-blur-sm flex items-center justify-center z-20">
+                        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    </div>
+                )}
+            </div>
           </main>
         </div>
         <YSKAssistantModal 
@@ -157,32 +160,36 @@ const AppCore: React.FC = () => {
 };
 
 const AppRouter: React.FC = () => {
-    const { activationStatus, isLoading: isActivationLoading } = useActivation();
     const { storageMode, isLoading: isStorageLoading } = useStorage();
+    const { activationStatus, isLoading: isActivationLoading } = useActivation();
     const { isDataLoading } = useData();
 
+    // 1. Check Storage Loading
     if (isStorageLoading) {
         return <SplashScreen message="جاري إعداد التخزين..." />;
     }
-
+    
+    // 2. Check if storage needs to be set up
     if (storageMode === 'pending' || storageMode === 'error') {
         return <StorageSetup />;
     }
-    
-    // Storage is ready, now check activation
+    // Storage is now ready ('fileSystem' or 'localStorage')
+
+    // 3. Check Activation Loading
     if (isActivationLoading) {
         return <SplashScreen message="جاري التحقق من التفعيل..." />;
     }
     
+    // 4. Handle Activation Status
     switch (activationStatus) {
         case 'active':
-            // Activation is ready, now check data loading
+            // Activation is good, now check if data is loaded
             if (isDataLoading) {
                 return <SplashScreen message="جاري تحميل بياناتك..." />;
             }
-            // All loaded, show the main app
+            // Everything is ready, show the main app with its providers
             return (
-                <AuthProvider>
+                 <AuthProvider>
                     <SyncProvider>
                         <AppCore />
                     </SyncProvider>

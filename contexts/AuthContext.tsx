@@ -53,8 +53,6 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
     useEffect(() => {
         const initStorage = async () => {
             if (!isApiSupported) {
-                // If not supported, we will eventually show the fallback page.
-                // Just mark as loaded so we don't get stuck.
                 setStorageMode('pending');
                 setIsLoading(false);
                 return;
@@ -62,16 +60,13 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
             try {
                 const handle = await fileStorage.loadDirectoryHandle();
                 if (handle) {
-                    // This now only queries, it doesn't request, so it's safe on load.
                     const hasPermission = await fileStorage.verifyPermission(handle, true);
                     if (hasPermission) {
                         setStorageMode('fileSystem');
                     } else {
-                        // We have a handle but no permission, user needs to grant it again via the UI.
                         setStorageMode('pending');
                     }
                 } else {
-                    // No handle stored, user needs to select a directory for the first time.
                     setStorageMode('pending');
                 }
             } catch (e) {
@@ -79,8 +74,6 @@ export const StorageProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 setError("حدث خطأ أثناء إعداد التخزين.");
                 setStorageMode('error');
             } finally {
-                // This is crucial to prevent the app from getting stuck on the splash screen.
-                // It ensures we always proceed to either the app or the setup screen.
                 setIsLoading(false);
             }
         };
@@ -204,8 +197,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const [state, setState] = useState<T>(initialValue);
 
         useEffect(() => {
+            let isMounted = true;
             const loadData = async () => {
-                if (storageMode === 'pending') return;
+                if (storageMode === 'pending' || storageMode === 'error') return;
                 
                 let data: T | null = null;
                 try {
@@ -218,17 +212,20 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 } catch (e) {
                     console.error(`Error loading data for key "${key}":`, e);
-                    data = null; // Reset to initial value on error
+                    data = null; 
                 }
                 
-                if (data !== null && data !== undefined) {
-                    setState(data);
-                } else {
-                    setState(initialValue); // Set initial if nothing found
+                if (isMounted) {
+                    if (data !== null && data !== undefined) {
+                        setState(data);
+                    } else {
+                        setState(initialValue);
+                    }
                 }
             };
             loadData();
-        }, [key, storageMode]); // FIX: Removed 'initialValue' from dependency array to prevent infinite loops.
+            return () => { isMounted = false; };
+        }, [key, storageMode]);
 
         const updateState: React.Dispatch<React.SetStateAction<T>> = (newState) => {
             const valueToStore = newState instanceof Function ? newState(state) : newState;
@@ -238,7 +235,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (storageMode === 'fileSystem') {
                     const handle = await fileStorage.loadDirectoryHandle();
                     if (handle) await fileStorage.writeFile(handle, `${key}.json`, valueToStore);
-                } else {
+                } else if (storageMode === 'localStorage') {
                     localStorage.setItem(key, JSON.stringify(valueToStore));
                 }
             };
@@ -281,18 +278,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [currentUser, setCurrentUser] = usePersistentState<User | null>('currentUser', null);
     
     const { addToast } = useToast();
-
+    
     useEffect(() => {
-        if (!users.find(u => u.id === 'admin')) {
+        if (storageMode !== 'pending' && !users.find(u => u.id === 'admin')) {
              setUsers(prev => [...prev.filter(u => u.id !== 'admin'), initialAdmin]);
         }
-    }, [users, setUsers]);
+    }, [users, setUsers, storageMode]);
 
     useEffect(() => {
-        if (storageMode !== 'pending') {
-             setTimeout(() => setIsDataLoading(false), 500);
+        if (storageMode === 'fileSystem' || storageMode === 'localStorage') {
+             setTimeout(() => setIsDataLoading(false), 800);
+        } else {
+            setIsDataLoading(true);
         }
     }, [storageMode]);
+
 
     const dataMap = { products, customers, suppliers, invoices, purchaseInvoices, expenses, bookings, users, notificationSettings, invoiceSettings, printSettings, auditLog, customerGroups, coupons, purchaseOrders, stockTakes };
     const settersMap: { [key: string]: Function } = { setProducts, setCustomers, setSuppliers, setInvoices, setPurchaseInvoices, setExpenses, setBookings, setUsers, setNotificationSettings, setInvoiceSettings, setPrintSettings, setAuditLog, setCustomerGroups, setCoupons, setPurchaseOrders, setStockTakes };
@@ -349,16 +349,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         coupons, setCoupons, purchaseOrders, setPurchaseOrders, stockTakes, setStockTakes,
         isDataLoading
     };
-    
-    // FIX: Simplified the conditional logic to resolve a type comparison error.
-    // The original expression `storageMode === 'pending' || (storageMode !== 'pending' && isDataLoading)`
-    // is logically equivalent to `storageMode === 'pending' || isDataLoading`.
-    if (storageMode === 'pending' || isDataLoading) {
-        return null; // Don't render children until storage is settled and data is loading/loaded
-    }
 
     return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
-}
+};
 
 // --- Sync Provider (Refactored) ---
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

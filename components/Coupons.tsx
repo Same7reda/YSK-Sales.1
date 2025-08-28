@@ -93,13 +93,13 @@ const CouponModal: React.FC<CouponModalProps> = ({ coupon, onSave, onClose }) =>
         expiryDate: coupon?.expiryDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         isActive: coupon ? coupon.isActive : true,
     });
+    // FIX: A type guard has been added to check if the event target is an HTMLInputElement before accessing the 'checked' property, resolving a type error since 'checked' does not exist on HTMLSelectElement.
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        // FIX: Added a type guard to check if the event target is an HTMLInputElement before accessing the 'checked' property. This resolves the type error since 'checked' does not exist on HTMLSelectElement.
-        if (type === 'checkbox' && e.target instanceof HTMLInputElement) {
-            setFormData(prev => ({ ...prev, [name]: e.target.checked }));
+        const target = e.target;
+        if (target.type === 'checkbox' && target instanceof HTMLInputElement) {
+            setFormData(prev => ({ ...prev, [target.name]: target.checked }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: value }));
+            setFormData(prev => ({ ...prev, [target.name]: target.value }));
         }
     };
     const handleSubmit = (e: React.FormEvent) => {
